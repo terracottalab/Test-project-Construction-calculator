@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Бюджет ремонта — сметы под контролем</title>
+    <meta name="description" content="Загружайте сметы PDF и Excel, считайте предоплаты и смотрите, куда уходит бюджет ремонта. Файлы остаются в браузере.">
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/site.css">
+</head>
+<body class="site">
+
+<header class="site-header">
+    <div class="site-header-inner">
+        <a class="logo" href="index.html">
+            <span class="logo-mark">Б</span>
+            Бюджет ремонта
+        </a>
+        <button class="nav-toggle" id="navToggle" type="button" aria-label="Открыть меню">Меню</button>
+        <nav class="site-nav" id="siteNav">
+            <a href="#features">Возможности</a>
+            <a href="#how">Как это работает</a>
+            <a href="app.html">Калькулятор</a>
+            <a class="btn btn-primary" href="app.html">Открыть смету</a>
+        </nav>
+    </div>
+</header>
+
+<main>
+    <section class="hero">
+        <div class="site-wrap hero-grid">
+            <div>
+                <p class="eyebrow" id="greeting">Добрый день</p>
+                <h1>Соберите бюджет ремонта из живых смет, а не из таблиц наугад</h1>
+                <p class="hero-lead">
+                    Загрузите Excel, CSV или PDF, поправьте строки вручную, зафиксируйте предоплаты
+                    и сразу увидите остаток к оплате, категории расходов и динамику по месяцам.
+                </p>
+                <div class="hero-actions">
+                    <a class="btn btn-primary" href="app.html">Перейти в калькулятор</a>
+                    <button class="btn btn-ghost" id="demoButton" type="button">Посмотреть демо-смету</button>
+                </div>
+                <p class="hero-note">Файлы разбираются локально в браузере. На сервер смета не уходит.</p>
+            </div>
+
+            <aside class="hero-card">
+                <h2>Что получите за минуту</h2>
+                <p class="hero-note">Сводка по смете, предоплатам и остатку — без регистрации.</p>
+                <div class="stat-row">
+                    <div class="stat">
+                        <b>PDF / Excel</b>
+                        <span>Импорт смет</span>
+                    </div>
+                    <div class="stat">
+                        <b>4 графика</b>
+                        <span>Категории и даты</span>
+                    </div>
+                    <div class="stat">
+                        <b>Сверка</b>
+                        <span>Итог документа</span>
+                    </div>
+                    <div class="stat">
+                        <b>Excel</b>
+                        <span>Выгрузка назад</span>
+                    </div>
+                </div>
+                <div class="resume" id="resumeCard">
+                    <p class="hero-note">У вас уже есть сохранённый бюджет в этом браузере.</p>
+                    <div class="stat-row">
+                        <div class="stat">
+                            <b id="resumeTotal">0 ₽</b>
+                            <span>По сметам</span>
+                        </div>
+                        <div class="stat">
+                            <b id="resumeRows">0</b>
+                            <span>Позиций</span>
+                        </div>
+                    </div>
+                    <a class="btn btn-clay" href="app.html">Продолжить работу</a>
+                </div>
+            </aside>
+        </div>
+    </section>
+
+    <section class="section" id="features">
+        <div class="site-wrap">
+            <h2>Возможности</h2>
+            <p class="section-lead">
+                Это не макет: калькулятор уже умеет читать сметы, считать предоплаты
+                и хранить правки между сессиями.
+            </p>
+            <div class="features">
+                <article class="feature">
+                    <span class="feature-index">01</span>
+                    <h3>Разбор Excel, CSV и PDF</h3>
+                    <p>Подхватывает колонки вроде «наименование», «кол-во», «цена» и «итого», даже если заголовок не в первой строке.</p>
+                </article>
+                <article class="feature">
+                    <span class="feature-index">02</span>
+                    <h3>Предоплаты отдельно</h3>
+                    <p>Аванс подрядчику не смешивается со строками сметы, но входит в общий баланс и график по месяцам.</p>
+                </article>
+                <article class="feature">
+                    <span class="feature-index">03</span>
+                    <h3>Сверка с документом</h3>
+                    <p>Если в файле есть итог, приложение сравнит его с суммой распознанных позиций и подсветит расхождение.</p>
+                </article>
+                <article class="feature">
+                    <span class="feature-index">04</span>
+                    <h3>Аналитика по категориям</h3>
+                    <p>Работы, материалы, доставка, аренда — смотрите, куда уходит бюджет, а не только общий итог.</p>
+                </article>
+                <article class="feature">
+                    <span class="feature-index">05</span>
+                    <h3>Ручные правки</h3>
+                    <p>Любую ячейку можно поправить прямо в таблице. Количество × цена пересчитывается сразу.</p>
+                </article>
+                <article class="feature">
+                    <span class="feature-index">06</span>
+                    <h3>Выгрузка обратно</h3>
+                    <p>Готовый бюджет можно скачать в Excel и отправить подрядчику или положить в папку проекта.</p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="how">
+        <div class="site-wrap">
+            <h2>Как это работает</h2>
+            <p class="section-lead">Три шага — и смета перестаёт быть «файлом в мессенджере».</p>
+            <div class="steps">
+                <article class="step">
+                    <strong>Шаг 1</strong>
+                    <h3>Укажите вид работ</h3>
+                    <p>Электрика, плитка, сантехника — это станет запасным разделом, если в файле нет своей колонки.</p>
+                </article>
+                <article class="step">
+                    <strong>Шаг 2</strong>
+                    <h3>Загрузите смету</h3>
+                    <p>Можно сразу несколько файлов. PDF можно поправить текстом, если структура нестандартная.</p>
+                </article>
+                <article class="step">
+                    <strong>Шаг 3</strong>
+                    <h3>Сверьте и сохраните</h3>
+                    <p>Добавьте предоплаты, отфильтруйте категории и выгрузите чистый Excel.</p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="site-wrap privacy">
+            <div>
+                <h2>Данные остаются у вас</h2>
+                <p class="section-lead">
+                    Разбор идёт в браузере: SheetJS читает Excel, PDF.js достаёт текст.
+                    Черновик пишется в localStorage этого устройства — удобно вернуться завтра
+                    и продолжить с того же места.
+                </p>
+            </div>
+            <div>
+                <a class="btn btn-primary" href="app.html">Начать с пустой сметы</a>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer class="site-footer">
+    <div class="site-wrap site-footer-inner">
+        <span>© <span id="year">2026</span> Бюджет ремонта</span>
+        <span>Локальное приложение для разбора смет</span>
+    </div>
+</footer>
+
+<script src="js/demo-data.js"></script>
+<script src="js/landing.js"></script>
+</body>
+</html>

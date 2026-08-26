@@ -1,0 +1,9 @@
+{
+  "name": "budget-remonta",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Локальный калькулятор бюджета ремонта: разбор смет PDF/Excel, предоплаты и аналитика в браузере.",
+  "scripts": {
+    "start": "python3 -m http.server 4173"
+  }
+}

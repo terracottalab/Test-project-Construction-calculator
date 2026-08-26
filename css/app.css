@@ -1,0 +1,392 @@
+* {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: "Figtree", "Segoe UI", sans-serif;
+            background: #f3efe6;
+            color: #1f2937;
+        }
+
+        .container {
+            width: min(1400px, calc(100% - 30px));
+            margin: 24px auto 48px;
+        }
+
+        h1 {
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            color: #6b7280;
+            margin-top: 0;
+        }
+
+        .card {
+            background: white;
+            border-radius: 14px;
+            padding: 22px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .form-grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 7px;
+        }
+
+        input,
+        select,
+        textarea,
+        button {
+            font: inherit;
+        }
+
+        input[type="text"],
+        input[type="file"],
+        input[type="date"],
+        input[type="number"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 11px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            background: white;
+        }
+
+        textarea {
+            min-height: 180px;
+            resize: vertical;
+        }
+
+        .required {
+            color: #dc2626;
+        }
+
+        .help {
+            margin-top: 6px;
+            color: #6b7280;
+            font-size: 13px;
+        }
+
+        .buttons {
+            margin-top: 18px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            border: 0;
+            border-radius: 8px;
+            padding: 10px 16px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        button:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .primary {
+            background: #111827;
+            color: white;
+        }
+
+        .secondary {
+            background: #e5e7eb;
+            color: #111827;
+        }
+
+        .danger {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .success {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 8px;
+            background: #eff6ff;
+            color: #1e40af;
+            display: none;
+        }
+
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .summary-card {
+            background: white;
+            border-radius: 12px;
+            padding: 18px;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .summary-title {
+            color: #6b7280;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .summary-value {
+            font-size: 23px;
+            font-weight: 700;
+        }
+
+        .summary-hint {
+            margin-top: 6px;
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .positive {
+            color: #166534;
+        }
+
+        .negative {
+            color: #991b1b;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1050px;
+        }
+
+        th {
+            background: #111827;
+            color: white;
+            padding: 11px;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        td {
+            border-bottom: 1px solid #e5e7eb;
+            padding: 10px;
+            vertical-align: top;
+        }
+
+        tbody tr:hover {
+            background: #f9fafb;
+        }
+
+        tbody tr.needs-review,
+        tbody tr.needs-review:hover {
+            background: #fffbeb;
+        }
+
+        .review-badge {
+            display: inline-block;
+            margin-top: 6px;
+            padding: 3px 7px;
+            border: 1px solid #f59e0b;
+            border-radius: 999px;
+            background: #fef3c7;
+            color: #92400e;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: help;
+        }
+
+        td[contenteditable="true"] {
+            cursor: text;
+        }
+
+        td[contenteditable="true"]:focus {
+            outline: 2px solid #93c5fd;
+            background: white;
+        }
+
+        td input[type="date"],
+        td input[type="number"],
+        td select {
+            padding: 6px 8px;
+            min-width: 130px;
+        }
+
+        .number {
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .small-button {
+            padding: 6px 9px;
+            font-size: 12px;
+        }
+
+        .group-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+        }
+
+        .group-item {
+            padding: 15px;
+            background: #f9fafb;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .group-name {
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+
+        .reconciliation-list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .reconciliation-item {
+            display: grid;
+            grid-template-columns: minmax(220px, 1.5fr) repeat(3, minmax(150px, 1fr));
+            gap: 12px;
+            align-items: center;
+            padding: 15px;
+            border: 1px solid #e5e7eb;
+            border-left: 5px solid #6b7280;
+            border-radius: 10px;
+            background: #f9fafb;
+        }
+
+        .reconciliation-item.match {
+            border-left-color: #16a34a;
+            background: #f0fdf4;
+        }
+
+        .reconciliation-item.mismatch {
+            border-left-color: #dc2626;
+            background: #fef2f2;
+        }
+
+        .reconciliation-item.unavailable {
+            border-left-color: #f59e0b;
+            background: #fffbeb;
+        }
+
+        .reconciliation-label {
+            color: #6b7280;
+            font-size: 12px;
+            margin-bottom: 3px;
+        }
+
+        .reconciliation-value {
+            font-weight: 700;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .warning {
+            padding: 12px;
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            color: #9a3412;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .filters {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .chart-box {
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 16px;
+            background: #fafafa;
+            min-height: 320px;
+        }
+
+        .chart-title {
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .chart-empty {
+            color: #6b7280;
+            padding: 40px 10px;
+            text-align: center;
+        }
+
+        .progress-track {
+            height: 10px;
+            background: #e5e7eb;
+            border-radius: 999px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #2563eb;
+            width: 0;
+        }
+
+        @media (max-width: 1000px) {
+            .form-grid-4,
+            .charts-grid,
+            .filters {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 800px) {
+            .form-grid,
+            .form-grid-4,
+            .summary,
+            .charts-grid,
+            .filters {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                width: min(100% - 20px, 1400px);
+                margin-top: 15px;
+            }
+
+            .reconciliation-item {
+                grid-template-columns: 1fr;
+            }
+        }

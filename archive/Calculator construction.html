@@ -1,0 +1,2265 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Бюджет ремонта — анализ смет</title>
+
+    <!--
+        SheetJS — библиотека для чтения Excel-файлов XLS / XLSX.
+        PDF.js — библиотека для извлечения текста из PDF.
+
+        Файлы обрабатываются непосредственно в браузере.
+        Сам код приложения не отправляет загруженные сметы на сервер.
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f4f6f8;
+            color: #1f2937;
+        }
+
+        .container {
+            width: min(1400px, calc(100% - 30px));
+            margin: 30px auto;
+        }
+
+        h1 {
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            color: #6b7280;
+            margin-top: 0;
+        }
+
+        .card {
+            background: white;
+            border-radius: 14px;
+            padding: 22px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 7px;
+        }
+
+        input,
+        select,
+        textarea,
+        button {
+            font: inherit;
+        }
+
+        input[type="text"],
+        input[type="file"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 11px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            background: white;
+        }
+
+        textarea {
+            min-height: 180px;
+            resize: vertical;
+        }
+
+        .required {
+            color: #dc2626;
+        }
+
+        .help {
+            margin-top: 6px;
+            color: #6b7280;
+            font-size: 13px;
+        }
+
+        .buttons {
+            margin-top: 18px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            border: 0;
+            border-radius: 8px;
+            padding: 10px 16px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        button:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .primary {
+            background: #111827;
+            color: white;
+        }
+
+        .secondary {
+            background: #e5e7eb;
+            color: #111827;
+        }
+
+        .danger {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .success {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 8px;
+            background: #eff6ff;
+            color: #1e40af;
+            display: none;
+        }
+
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .summary-card {
+            background: white;
+            border-radius: 12px;
+            padding: 18px;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .summary-title {
+            color: #6b7280;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .summary-value {
+            font-size: 23px;
+            font-weight: 700;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1050px;
+        }
+
+        th {
+            background: #111827;
+            color: white;
+            padding: 11px;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        td {
+            border-bottom: 1px solid #e5e7eb;
+            padding: 10px;
+            vertical-align: top;
+        }
+
+        tbody tr:hover {
+            background: #f9fafb;
+        }
+
+        td[contenteditable="true"] {
+            cursor: text;
+        }
+
+        td[contenteditable="true"]:focus {
+            outline: 2px solid #93c5fd;
+            background: white;
+        }
+
+        .number {
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .small-button {
+            padding: 6px 9px;
+            font-size: 12px;
+        }
+
+        .group-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+        }
+
+        .group-item {
+            padding: 15px;
+            background: #f9fafb;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .group-name {
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .warning {
+            padding: 12px;
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            color: #9a3412;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        @media (max-width: 800px) {
+            .form-grid,
+            .summary {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                width: min(100% - 20px, 1400px);
+                margin-top: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>🏗 Бюджет ремонта</h1>
+    <p class="subtitle">
+        Загрузка и построчный анализ смет PDF / Excel
+    </p>
+
+    <!-- ============================= -->
+    <!-- БЛОК ЗАГРУЗКИ СМЕТЫ -->
+    <!-- ============================= -->
+
+    <div class="card">
+
+        <h2>1. Загрузка сметы</h2>
+
+        <div class="form-grid">
+
+            <div>
+                <label>
+                    Вид работ <span class="required">*</span>
+                </label>
+
+                <input
+                    id="workType"
+                    type="text"
+                    placeholder="Например: Электрика, сантехника, плиточные работы"
+                >
+
+                <div class="help">
+                    Обязательное поле. Если в самой смете есть столбец
+                    «Вид работ» или «Раздел», приложение постарается использовать его.
+                    В остальных случаях будет применён вид работ, указанный здесь.
+                </div>
+            </div>
+
+            <div>
+                <label>
+                    Смета <span class="required">*</span>
+                </label>
+
+                <input
+                    id="fileInput"
+                    type="file"
+                    multiple
+                    disabled
+                    accept=".xlsx,.xls,.csv,.pdf"
+                >
+
+                <div class="help">
+                    Поддерживаются XLSX, XLS, CSV и текстовые PDF.
+                </div>
+            </div>
+
+        </div>
+
+        <div class="buttons">
+
+            <button
+                id="analyzeButton"
+                class="primary"
+                disabled
+            >
+                Анализировать смету
+            </button>
+
+            <button
+                id="manualRowButton"
+                class="secondary"
+            >
+                + Добавить строку вручную
+            </button>
+
+            <button
+                id="exportButton"
+                class="success"
+            >
+                Скачать CSV
+            </button>
+
+            <button
+                id="clearButton"
+                class="danger"
+            >
+                Очистить всё
+            </button>
+
+        </div>
+
+        <div id="status" class="status"></div>
+
+    </div>
+
+
+    <!-- ============================= -->
+    <!-- ДОПОЛНИТЕЛЬНАЯ ОБРАБОТКА PDF -->
+    <!-- ============================= -->
+
+    <div id="pdfPanel" class="card hidden">
+
+        <h2>Текст из PDF</h2>
+
+        <p>
+            Проверьте извлечённый текст. Если PDF имеет нестандартную структуру,
+            его можно вручную поправить перед разбором.
+        </p>
+
+        <textarea
+            id="pdfText"
+            placeholder="Здесь появится текст из PDF..."
+        ></textarea>
+
+        <div class="buttons">
+
+            <button
+                id="parsePdfButton"
+                class="primary"
+            >
+                Разобрать текст по строкам
+            </button>
+
+        </div>
+
+        <div class="warning">
+            ⚠️ Если PDF является сканом или фотографией, PDF.js не сможет
+            извлечь текст. Для таких документов в следующей версии понадобится OCR.
+        </div>
+
+    </div>
+
+
+    <!-- ============================= -->
+    <!-- СВОДНЫЕ ПОКАЗАТЕЛИ -->
+    <!-- ============================= -->
+
+    <div class="summary">
+
+        <div class="summary-card">
+            <div class="summary-title">Строк в сметах</div>
+            <div id="rowsCount" class="summary-value">0</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-title">Видов работ</div>
+            <div id="workTypesCount" class="summary-value">0</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-title">Смет загружено</div>
+            <div id="filesCount" class="summary-value">0</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-title">Общий бюджет</div>
+            <div id="grandTotal" class="summary-value">0 ₽</div>
+        </div>
+
+    </div>
+
+
+    <!-- ============================= -->
+    <!-- ИТОГИ ПО ВИДАМ РАБОТ -->
+    <!-- ============================= -->
+
+    <div class="card">
+
+        <h2>2. Итоги по видам работ</h2>
+
+        <div
+            id="groupSummary"
+            class="group-summary"
+        >
+            Пока данных нет.
+        </div>
+
+    </div>
+
+
+    <!-- ============================= -->
+    <!-- ТАБЛИЦА -->
+    <!-- ============================= -->
+
+    <div class="card">
+
+        <h2>3. Детализация сметы</h2>
+
+        <div style="max-width:350px; margin-bottom:15px;">
+
+            <label>Фильтр по виду работ</label>
+
+            <select id="workFilter">
+                <option value="">Все виды работ</option>
+            </select>
+
+        </div>
+
+        <div class="table-wrapper">
+
+            <table>
+
+                <thead>
+
+                <tr>
+                    <th>Вид работ</th>
+                    <th>Наименование</th>
+                    <th>Количество</th>
+                    <th>Ед. изм.</th>
+                    <th>Цена за единицу</th>
+                    <th>Полная стоимость</th>
+                    <th>Источник</th>
+                    <th></th>
+                </tr>
+
+                </thead>
+
+                <tbody id="tableBody"></tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+/* ============================================================
+   НАСТРОЙКА PDF.JS
+============================================================ */
+
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+
+/* ============================================================
+   ГЛОБАЛЬНЫЕ ДАННЫЕ
+============================================================ */
+
+let estimateRows = [];
+let loadedFiles = new Set();
+let currentPdfSource = "";
+
+let nextId = 1;
+
+
+/* ============================================================
+   ЭЛЕМЕНТЫ ИНТЕРФЕЙСА
+============================================================ */
+
+const workTypeInput = document.getElementById("workType");
+const fileInput = document.getElementById("fileInput");
+const analyzeButton = document.getElementById("analyzeButton");
+
+const tableBody = document.getElementById("tableBody");
+
+const rowsCount = document.getElementById("rowsCount");
+const workTypesCount = document.getElementById("workTypesCount");
+const filesCount = document.getElementById("filesCount");
+const grandTotal = document.getElementById("grandTotal");
+
+const groupSummary = document.getElementById("groupSummary");
+const workFilter = document.getElementById("workFilter");
+
+const statusBox = document.getElementById("status");
+
+const pdfPanel = document.getElementById("pdfPanel");
+const pdfText = document.getElementById("pdfText");
+
+
+/* ============================================================
+   ОБЯЗАТЕЛЬНЫЙ ВИД РАБОТ
+============================================================ */
+
+workTypeInput.addEventListener("input", () => {
+
+    const hasWorkType =
+        workTypeInput.value.trim().length > 0;
+
+    fileInput.disabled = !hasWorkType;
+
+    updateAnalyzeButton();
+
+});
+
+
+fileInput.addEventListener("change", updateAnalyzeButton);
+
+
+function updateAnalyzeButton() {
+
+    const hasWorkType =
+        workTypeInput.value.trim().length > 0;
+
+    const hasFile =
+        fileInput.files.length > 0;
+
+    analyzeButton.disabled =
+        !(hasWorkType && hasFile);
+}
+
+
+/* ============================================================
+   ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+============================================================ */
+
+function showStatus(message) {
+
+    statusBox.style.display = "block";
+    statusBox.textContent = message;
+
+}
+
+
+function normalizeHeader(value) {
+
+    return String(value ?? "")
+        .toLowerCase()
+        .replace(/ё/g, "е")
+        .replace(/[._]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+}
+
+
+function parseNumber(value) {
+
+    if (
+        value === null ||
+        value === undefined ||
+        value === ""
+    ) {
+        return null;
+    }
+
+    if (typeof value === "number") {
+        return value;
+    }
+
+    let text = String(value)
+        .replace(/\u00A0/g, " ")
+        .replace(/[₽$€]/g, "")
+        .replace(/\s/g, "")
+        .replace(",", ".")
+        .replace(/[^\d.-]/g, "");
+
+    if (!text) return null;
+
+    const result = Number(text);
+
+    return Number.isFinite(result)
+        ? result
+        : null;
+}
+
+
+function formatMoney(value) {
+
+    const number =
+        Number(value) || 0;
+
+    return new Intl.NumberFormat(
+        "ru-RU",
+        {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
+        }
+    ).format(number) + " ₽";
+}
+
+
+function formatNumber(value) {
+
+    if (
+        value === null ||
+        value === undefined ||
+        value === ""
+    ) {
+        return "";
+    }
+
+    return new Intl.NumberFormat(
+        "ru-RU",
+        {
+            maximumFractionDigits: 3
+        }
+    ).format(value);
+}
+
+
+/* ============================================================
+   СЛОВАРЬ ВОЗМОЖНЫХ НАЗВАНИЙ КОЛОНОК EXCEL
+============================================================ */
+
+const columnAliases = {
+
+    workType: [
+        "вид работ",
+        "тип работ",
+        "раздел",
+        "категория",
+        "группа"
+    ],
+
+    name: [
+        "наименование",
+        "наименование работ",
+        "наименование материала",
+        "работа",
+        "материал",
+        "позиция",
+        "описание"
+    ],
+
+    quantity: [
+        "количество",
+        "кол во",
+        "кол-во",
+        "объем",
+        "обьем",
+        "qty"
+    ],
+
+    unit: [
+        "ед изм",
+        "ед. изм",
+        "единица измерения",
+        "единица",
+        "ед"
+    ],
+
+    price: [
+        "цена",
+        "цена за единицу",
+        "цена за ед",
+        "стоимость единицы",
+        "price"
+    ],
+
+    total: [
+        "стоимость",
+        "полная стоимость",
+        "сумма",
+        "всего",
+        "итого",
+        "total"
+    ]
+
+};
+
+
+/* ============================================================
+   ПОИСК КОЛОНОК
+============================================================ */
+
+function findColumn(headers, aliases) {
+
+    return headers.findIndex(header => {
+
+        const normalized =
+            normalizeHeader(header);
+
+        return aliases.some(alias =>
+            normalized === alias ||
+            normalized.includes(alias)
+        );
+
+    });
+}
+
+
+/* ============================================================
+   ПОИСК СТРОКИ ЗАГОЛОВКОВ
+============================================================ */
+
+function detectHeaderRow(data) {
+
+    let bestRow = 0;
+    let bestScore = -1;
+
+    const limit =
+        Math.min(data.length, 25);
+
+    for (
+        let rowIndex = 0;
+        rowIndex < limit;
+        rowIndex++
+    ) {
+
+        const row =
+            data[rowIndex] || [];
+
+        const headers =
+            row.map(normalizeHeader);
+
+        let score = 0;
+
+        for (const aliases of Object.values(columnAliases)) {
+
+            if (
+                findColumn(
+                    headers,
+                    aliases
+                ) !== -1
+            ) {
+                score++;
+            }
+
+        }
+
+        if (score > bestScore) {
+
+            bestScore = score;
+            bestRow = rowIndex;
+
+        }
+
+    }
+
+    return bestRow;
+}
+
+
+/* ============================================================
+   СОЗДАНИЕ ОДНОЙ СТРОКИ СМЕТЫ
+============================================================ */
+
+function addEstimateRow({
+    workType,
+    name,
+    quantity,
+    unit,
+    price,
+    total,
+    source
+}) {
+
+    name =
+        String(name ?? "").trim();
+
+    if (!name) return;
+
+
+    /*
+        Пропускаем стандартные итоговые строки,
+        чтобы не посчитать общую сумму дважды.
+    */
+
+    if (
+        /^(итого|всего|общая стоимость|subtotal|total)\b/i
+            .test(name)
+    ) {
+        return;
+    }
+
+
+    quantity =
+        parseNumber(quantity);
+
+    price =
+        parseNumber(price);
+
+    total =
+        parseNumber(total);
+
+
+    /*
+        Если итог не указан,
+        но есть количество и цена,
+        рассчитываем его автоматически.
+    */
+
+    if (
+        total === null &&
+        quantity !== null &&
+        price !== null
+    ) {
+
+        total =
+            quantity * price;
+
+    }
+
+
+    /*
+        Если цена отсутствует,
+        но известны итог и количество,
+        рассчитываем цену.
+    */
+
+    if (
+        price === null &&
+        total !== null &&
+        quantity !== null &&
+        quantity !== 0
+    ) {
+
+        price =
+            total / quantity;
+
+    }
+
+
+    estimateRows.push({
+
+        id: nextId++,
+
+        workType:
+            String(workType || "Не указано").trim(),
+
+        name,
+
+        quantity,
+
+        unit:
+            String(unit ?? "").trim(),
+
+        price,
+
+        total,
+
+        source:
+            source || ""
+
+    });
+
+}
+
+
+/* ============================================================
+   АНАЛИЗ EXCEL / CSV
+============================================================ */
+
+async function analyzeExcel(file, defaultWorkType) {
+
+    const buffer =
+        await file.arrayBuffer();
+
+    const workbook =
+        XLSX.read(buffer, {
+            type: "array"
+        });
+
+
+    for (const sheetName of workbook.SheetNames) {
+
+        const sheet =
+            workbook.Sheets[sheetName];
+
+        const data =
+            XLSX.utils.sheet_to_json(
+                sheet,
+                {
+                    header: 1,
+                    defval: ""
+                }
+            );
+
+        if (!data.length) continue;
+
+
+        const headerRowIndex =
+            detectHeaderRow(data);
+
+        const headers =
+            data[headerRowIndex]
+                .map(normalizeHeader);
+
+
+        const indexes = {
+
+            workType:
+                findColumn(
+                    headers,
+                    columnAliases.workType
+                ),
+
+            name:
+                findColumn(
+                    headers,
+                    columnAliases.name
+                ),
+
+            quantity:
+                findColumn(
+                    headers,
+                    columnAliases.quantity
+                ),
+
+            unit:
+                findColumn(
+                    headers,
+                    columnAliases.unit
+                ),
+
+            price:
+                findColumn(
+                    headers,
+                    columnAliases.price
+                ),
+
+            total:
+                findColumn(
+                    headers,
+                    columnAliases.total
+                )
+
+        };
+
+
+        /*
+            Если колонка "Наименование"
+            не найдена, используем первую
+            текстовую колонку как резервный вариант.
+        */
+
+        if (indexes.name === -1) {
+            indexes.name = 0;
+        }
+
+
+        for (
+            let i = headerRowIndex + 1;
+            i < data.length;
+            i++
+        ) {
+
+            const row =
+                data[i];
+
+            if (!row) continue;
+
+
+            const name =
+                row[indexes.name];
+
+
+            if (
+                !String(name ?? "").trim()
+            ) {
+                continue;
+            }
+
+
+            const detectedWorkType =
+                indexes.workType !== -1
+                    ? row[indexes.workType]
+                    : "";
+
+
+            addEstimateRow({
+
+                workType:
+                    detectedWorkType ||
+                    defaultWorkType,
+
+                name,
+
+                quantity:
+                    indexes.quantity !== -1
+                        ? row[indexes.quantity]
+                        : null,
+
+                unit:
+                    indexes.unit !== -1
+                        ? row[indexes.unit]
+                        : "",
+
+                price:
+                    indexes.price !== -1
+                        ? row[indexes.price]
+                        : null,
+
+                total:
+                    indexes.total !== -1
+                        ? row[indexes.total]
+                        : null,
+
+                source:
+                    file.name +
+                    " / " +
+                    sheetName
+
+            });
+
+        }
+
+    }
+
+}
+
+
+/* ============================================================
+   ИЗВЛЕЧЕНИЕ ТЕКСТА ИЗ PDF
+============================================================ */
+
+async function extractPdfText(file) {
+
+    const buffer =
+        await file.arrayBuffer();
+
+    const pdf =
+        await pdfjsLib
+            .getDocument({
+                data: buffer
+            })
+            .promise;
+
+    let result = "";
+
+
+    for (
+        let pageNumber = 1;
+        pageNumber <= pdf.numPages;
+        pageNumber++
+    ) {
+
+        const page =
+            await pdf.getPage(pageNumber);
+
+        const content =
+            await page.getTextContent();
+
+
+        /*
+            Группируем элементы PDF
+            примерно по горизонтальным строкам.
+        */
+
+        const rows = [];
+
+
+        content.items.forEach(item => {
+
+            const text =
+                String(item.str || "").trim();
+
+            if (!text) return;
+
+
+            const x =
+                item.transform[4];
+
+            const y =
+                Math.round(item.transform[5]);
+
+
+            let row =
+                rows.find(r =>
+                    Math.abs(r.y - y) <= 2
+                );
+
+
+            if (!row) {
+
+                row = {
+                    y,
+                    items: []
+                };
+
+                rows.push(row);
+
+            }
+
+
+            row.items.push({
+                x,
+                text
+            });
+
+        });
+
+
+        rows.sort(
+            (a, b) =>
+                b.y - a.y
+        );
+
+
+        for (const row of rows) {
+
+            row.items.sort(
+                (a, b) =>
+                    a.x - b.x
+            );
+
+            result +=
+                row.items
+                    .map(item => item.text)
+                    .join("\t")
+                +
+                "\n";
+
+        }
+
+
+        result += "\n";
+
+    }
+
+
+    return result;
+
+}
+
+
+/* ============================================================
+   ПРИБЛИЗИТЕЛЬНЫЙ ПОСТРОЧНЫЙ РАЗБОР PDF
+============================================================ */
+
+function parsePdfRows(
+    text,
+    defaultWorkType,
+    source
+) {
+
+    const lines =
+        text.split(/\r?\n/);
+
+    let currentWorkType =
+        defaultWorkType;
+
+
+    lines.forEach(line => {
+
+        line =
+            line.trim();
+
+        if (!line) return;
+
+
+        /*
+            Определяем отдельные разделы вида:
+            "Раздел: Электрика"
+            "Вид работ: Сантехника"
+        */
+
+        const sectionMatch =
+            line.match(
+                /^(?:раздел|вид работ|категория)\s*[:\-]\s*(.+)$/i
+            );
+
+
+        if (sectionMatch) {
+
+            currentWorkType =
+                sectionMatch[1].trim();
+
+            return;
+
+        }
+
+
+        /*
+            Пропускаем заголовки таблиц.
+        */
+
+        if (
+            /наименование.*(?:количество|кол-во|цена|стоимость)/i
+                .test(line)
+        ) {
+            return;
+        }
+
+
+        /*
+            Ищем числовые значения.
+            Обычно последние значения строки:
+            количество → цена → итог.
+        */
+
+        const regex =
+            /[-+]?\d[\d\s]*(?:[.,]\d+)?/g;
+
+        const matches =
+            [...line.matchAll(regex)];
+
+
+        /*
+            Для автоматического разбора
+            требуется как минимум 3 числа:
+            количество, цена, стоимость.
+        */
+
+        if (matches.length < 3) {
+            return;
+        }
+
+
+        const quantityMatch =
+            matches[matches.length - 3];
+
+        const priceMatch =
+            matches[matches.length - 2];
+
+        const totalMatch =
+            matches[matches.length - 1];
+
+
+        const quantity =
+            parseNumber(quantityMatch[0]);
+
+        const price =
+            parseNumber(priceMatch[0]);
+
+        const total =
+            parseNumber(totalMatch[0]);
+
+
+        /*
+            Всё до количества считаем
+            названием позиции + возможной единицей измерения.
+        */
+
+        let prefix =
+            line.substring(
+                0,
+                quantityMatch.index
+            )
+            .trim();
+
+
+        /*
+            Убираем возможный номер строки.
+        */
+
+        prefix =
+            prefix.replace(
+                /^\d+[.)]?\s+/,
+                ""
+            );
+
+
+        /*
+            Ищем единицу измерения в конце
+            текстовой части.
+        */
+
+        let unit = "";
+
+        const unitMatch =
+            prefix.match(
+                /\b(шт\.?|м²|м2|м³|м3|м\.?п\.?|м|кг|л|компл\.?|комплект|ед\.?|час|день|дн\.?)$/i
+            );
+
+
+        if (unitMatch) {
+
+            unit =
+                unitMatch[1];
+
+            prefix =
+                prefix
+                    .slice(
+                        0,
+                        unitMatch.index
+                    )
+                    .trim();
+
+        }
+
+
+        if (!prefix) return;
+
+
+        addEstimateRow({
+
+            workType:
+                currentWorkType,
+
+            name:
+                prefix,
+
+            quantity,
+
+            unit,
+
+            price,
+
+            total,
+
+            source
+
+        });
+
+    });
+
+}
+
+
+/* ============================================================
+   КНОПКА "АНАЛИЗИРОВАТЬ"
+============================================================ */
+
+analyzeButton.addEventListener(
+    "click",
+    async () => {
+
+        const defaultWorkType =
+            workTypeInput.value.trim();
+
+        if (!defaultWorkType) {
+
+            alert(
+                "Перед анализом необходимо указать вид работ."
+            );
+
+            return;
+
+        }
+
+
+        const files =
+            [...fileInput.files];
+
+
+        if (!files.length) {
+
+            alert(
+                "Выберите файл сметы."
+            );
+
+            return;
+
+        }
+
+
+        analyzeButton.disabled = true;
+
+        showStatus(
+            "Анализируем смету..."
+        );
+
+
+        try {
+
+            for (const file of files) {
+
+                const extension =
+                    file.name
+                        .split(".")
+                        .pop()
+                        .toLowerCase();
+
+
+                if (
+                    extension === "xlsx" ||
+                    extension === "xls" ||
+                    extension === "csv"
+                ) {
+
+                    await analyzeExcel(
+                        file,
+                        defaultWorkType
+                    );
+
+                    loadedFiles.add(
+                        file.name
+                    );
+
+                }
+
+
+                else if (
+                    extension === "pdf"
+                ) {
+
+                    const extractedText =
+                        await extractPdfText(file);
+
+                    currentPdfSource =
+                        file.name;
+
+                    pdfText.value =
+                        extractedText;
+
+                    pdfPanel
+                        .classList
+                        .remove("hidden");
+
+
+                    /*
+                        Сразу пробуем разобрать PDF автоматически.
+                    */
+
+                    parsePdfRows(
+                        extractedText,
+                        defaultWorkType,
+                        file.name
+                    );
+
+                    loadedFiles.add(
+                        file.name
+                    );
+
+                }
+
+            }
+
+
+            saveToLocalStorage();
+            renderAll();
+
+
+            showStatus(
+                "Анализ завершён. Проверьте строки таблицы и при необходимости исправьте данные вручную."
+            );
+
+        }
+
+        catch (error) {
+
+            console.error(error);
+
+            showStatus(
+                "Ошибка при чтении файла: " +
+                error.message
+            );
+
+        }
+
+        finally {
+
+            updateAnalyzeButton();
+
+        }
+
+    }
+);
+
+
+/* ============================================================
+   ПОВТОРНЫЙ РАЗБОР ТЕКСТА PDF
+============================================================ */
+
+document
+    .getElementById("parsePdfButton")
+    .addEventListener(
+        "click",
+        () => {
+
+            const defaultWorkType =
+                workTypeInput.value.trim();
+
+            if (!defaultWorkType) {
+
+                alert(
+                    "Сначала укажите вид работ."
+                );
+
+                return;
+
+            }
+
+
+            parsePdfRows(
+                pdfText.value,
+                defaultWorkType,
+                currentPdfSource ||
+                "PDF"
+            );
+
+
+            saveToLocalStorage();
+            renderAll();
+
+        }
+    );
+
+
+/* ============================================================
+   ДОБАВЛЕНИЕ РУЧНОЙ СТРОКИ
+============================================================ */
+
+document
+    .getElementById("manualRowButton")
+    .addEventListener(
+        "click",
+        () => {
+
+            const workType =
+                workTypeInput.value.trim()
+                ||
+                "Не указано";
+
+
+            addEstimateRow({
+
+                workType,
+
+                name:
+                    "Новая позиция",
+
+                quantity:
+                    1,
+
+                unit:
+                    "шт.",
+
+                price:
+                    0,
+
+                total:
+                    0,
+
+                source:
+                    "Вручную"
+
+            });
+
+
+            saveToLocalStorage();
+            renderAll();
+
+        }
+    );
+
+
+/* ============================================================
+   ОТОБРАЖЕНИЕ ТАБЛИЦЫ
+============================================================ */
+
+function renderTable() {
+
+    tableBody.innerHTML = "";
+
+
+    const filterValue =
+        workFilter.value;
+
+
+    const filteredRows =
+        estimateRows
+            .filter(row =>
+                !filterValue ||
+                row.workType === filterValue
+            )
+            .slice()
+            .sort(
+                (a, b) =>
+                    a.workType.localeCompare(
+                        b.workType,
+                        "ru"
+                    )
+            );
+
+
+    for (const row of filteredRows) {
+
+        const tr =
+            document.createElement("tr");
+
+
+        tr.innerHTML = `
+
+            <td
+                contenteditable="true"
+                data-field="workType"
+                data-id="${row.id}"
+            >${escapeHtml(row.workType)}</td>
+
+            <td
+                contenteditable="true"
+                data-field="name"
+                data-id="${row.id}"
+            >${escapeHtml(row.name)}</td>
+
+            <td
+                class="number"
+                contenteditable="true"
+                data-field="quantity"
+                data-id="${row.id}"
+            >${formatNumber(row.quantity)}</td>
+
+            <td
+                contenteditable="true"
+                data-field="unit"
+                data-id="${row.id}"
+            >${escapeHtml(row.unit)}</td>
+
+            <td
+                class="number"
+                contenteditable="true"
+                data-field="price"
+                data-id="${row.id}"
+            >${formatNumber(row.price)}</td>
+
+            <td
+                class="number"
+                contenteditable="true"
+                data-field="total"
+                data-id="${row.id}"
+            >${formatNumber(row.total)}</td>
+
+            <td>
+                ${escapeHtml(row.source)}
+            </td>
+
+            <td>
+                <button
+                    class="danger small-button"
+                    onclick="deleteRow(${row.id})"
+                >
+                    удалить
+                </button>
+            </td>
+
+        `;
+
+
+        tableBody.appendChild(tr);
+
+    }
+
+
+    /*
+        Реагируем на ручное изменение ячеек.
+    */
+
+    tableBody
+        .querySelectorAll(
+            '[contenteditable="true"]'
+        )
+        .forEach(cell => {
+
+            cell.addEventListener(
+                "blur",
+                handleCellEdit
+            );
+
+        });
+
+}
+
+
+/* ============================================================
+   РЕДАКТИРОВАНИЕ ЯЧЕЕК
+============================================================ */
+
+function handleCellEdit(event) {
+
+    const cell =
+        event.target;
+
+    const id =
+        Number(
+            cell.dataset.id
+        );
+
+    const field =
+        cell.dataset.field;
+
+    const row =
+        estimateRows.find(
+            row => row.id === id
+        );
+
+    if (!row) return;
+
+
+    let value =
+        cell.innerText.trim();
+
+
+    if (
+        field === "quantity" ||
+        field === "price" ||
+        field === "total"
+    ) {
+
+        value =
+            parseNumber(value);
+
+    }
+
+
+    row[field] =
+        value;
+
+
+    /*
+        Если меняются количество или цена,
+        пересчитываем полную стоимость.
+    */
+
+    if (
+        field === "quantity" ||
+        field === "price"
+    ) {
+
+        if (
+            row.quantity !== null &&
+            row.price !== null
+        ) {
+
+            row.total =
+                row.quantity *
+                row.price;
+
+        }
+
+    }
+
+
+    saveToLocalStorage();
+    renderAll();
+
+}
+
+
+/* ============================================================
+   УДАЛЕНИЕ СТРОКИ
+============================================================ */
+
+function deleteRow(id) {
+
+    estimateRows =
+        estimateRows.filter(
+            row =>
+                row.id !== id
+        );
+
+
+    saveToLocalStorage();
+    renderAll();
+
+}
+
+
+/* ============================================================
+   СВОДНЫЕ ПОКАЗАТЕЛИ
+============================================================ */
+
+function renderSummary() {
+
+    rowsCount.textContent =
+        estimateRows.length;
+
+
+    const types =
+        [
+            ...new Set(
+                estimateRows
+                    .map(row =>
+                        row.workType
+                    )
+                    .filter(Boolean)
+            )
+        ];
+
+
+    workTypesCount.textContent =
+        types.length;
+
+
+    filesCount.textContent =
+        loadedFiles.size;
+
+
+    const total =
+        estimateRows.reduce(
+            (sum, row) =>
+                sum +
+                (Number(row.total) || 0),
+            0
+        );
+
+
+    grandTotal.textContent =
+        formatMoney(total);
+
+}
+
+
+/* ============================================================
+   ИТОГИ ПО ВИДАМ РАБОТ
+============================================================ */
+
+function renderGroupSummary() {
+
+    if (!estimateRows.length) {
+
+        groupSummary.innerHTML =
+            "Пока данных нет.";
+
+        return;
+
+    }
+
+
+    const groups = {};
+
+
+    estimateRows.forEach(row => {
+
+        const type =
+            row.workType ||
+            "Не указано";
+
+
+        if (!groups[type]) {
+
+            groups[type] = {
+                rows: 0,
+                total: 0
+            };
+
+        }
+
+
+        groups[type].rows++;
+
+        groups[type].total +=
+            Number(row.total) || 0;
+
+    });
+
+
+    groupSummary.innerHTML =
+        Object.entries(groups)
+            .sort(
+                (a, b) =>
+                    a[0].localeCompare(
+                        b[0],
+                        "ru"
+                    )
+            )
+            .map(
+                ([name, data]) => `
+
+                    <div class="group-item">
+
+                        <div class="group-name">
+                            ${escapeHtml(name)}
+                        </div>
+
+                        <div>
+                            Позиций:
+                            ${data.rows}
+                        </div>
+
+                        <div>
+                            <strong>
+                                ${formatMoney(data.total)}
+                            </strong>
+                        </div>
+
+                    </div>
+
+                `
+            )
+            .join("");
+
+}
+
+
+/* ============================================================
+   ФИЛЬТР
+============================================================ */
+
+function renderFilter() {
+
+    const current =
+        workFilter.value;
+
+
+    const types =
+        [
+            ...new Set(
+                estimateRows
+                    .map(row =>
+                        row.workType
+                    )
+                    .filter(Boolean)
+            )
+        ]
+        .sort(
+            (a, b) =>
+                a.localeCompare(
+                    b,
+                    "ru"
+                )
+        );
+
+
+    workFilter.innerHTML =
+        '<option value="">Все виды работ</option>';
+
+
+    types.forEach(type => {
+
+        const option =
+            document.createElement(
+                "option"
+            );
+
+        option.value =
+            type;
+
+        option.textContent =
+            type;
+
+        workFilter.appendChild(
+            option
+        );
+
+    });
+
+
+    if (
+        types.includes(current)
+    ) {
+        workFilter.value =
+            current;
+    }
+
+}
+
+
+workFilter.addEventListener(
+    "change",
+    renderTable
+);
+
+
+/* ============================================================
+   ОБНОВЛЕНИЕ ВСЕГО ИНТЕРФЕЙСА
+============================================================ */
+
+function renderAll() {
+
+    renderFilter();
+    renderTable();
+    renderSummary();
+    renderGroupSummary();
+
+}
+
+
+/* ============================================================
+   CSV-ЭКСПОРТ
+============================================================ */
+
+document
+    .getElementById("exportButton")
+    .addEventListener(
+        "click",
+        () => {
+
+            if (!estimateRows.length) {
+
+                alert(
+                    "Нет данных для выгрузки."
+                );
+
+                return;
+
+            }
+
+
+            const header = [
+                "Вид работ",
+                "Наименование",
+                "Количество",
+                "Единица измерения",
+                "Цена",
+                "Полная стоимость",
+                "Источник"
+            ];
+
+
+            const data =
+                estimateRows.map(row => [
+
+                    row.workType,
+                    row.name,
+                    row.quantity ?? "",
+                    row.unit,
+                    row.price ?? "",
+                    row.total ?? "",
+                    row.source
+
+                ]);
+
+
+            const csv =
+                [
+                    header,
+                    ...data
+                ]
+                .map(row =>
+                    row
+                        .map(value =>
+                            `"${String(value ?? "")
+                                .replace(/"/g, '""')}"`
+                        )
+                        .join(";")
+                )
+                .join("\n");
+
+
+            const blob =
+                new Blob(
+                    [
+                        "\uFEFF" +
+                        csv
+                    ],
+                    {
+                        type:
+                            "text/csv;charset=utf-8;"
+                    }
+                );
+
+
+            const url =
+                URL.createObjectURL(blob);
+
+
+            const link =
+                document.createElement(
+                    "a"
+                );
+
+
+            link.href =
+                url;
+
+            link.download =
+                "budget_remonta.csv";
+
+
+            link.click();
+
+
+            URL.revokeObjectURL(
+                url
+            );
+
+        }
+    );
+
+
+/* ============================================================
+   ОЧИСТКА
+============================================================ */
+
+document
+    .getElementById("clearButton")
+    .addEventListener(
+        "click",
+        () => {
+
+            if (
+                !confirm(
+                    "Удалить все загруженные данные?"
+                )
+            ) {
+                return;
+            }
+
+
+            estimateRows = [];
+            loadedFiles.clear();
+
+            pdfText.value = "";
+
+            pdfPanel
+                .classList
+                .add("hidden");
+
+
+            localStorage.removeItem(
+                "renovationBudgetData"
+            );
+
+
+            renderAll();
+
+        }
+    );
+
+
+/* ============================================================
+   СОХРАНЕНИЕ ДАННЫХ В БРАУЗЕРЕ
+============================================================ */
+
+function saveToLocalStorage() {
+
+    const data = {
+
+        rows:
+            estimateRows,
+
+        files:
+            [...loadedFiles],
+
+        nextId
+
+    };
+
+
+    localStorage.setItem(
+        "renovationBudgetData",
+        JSON.stringify(data)
+    );
+
+}
+
+
+/* ============================================================
+   ВОССТАНОВЛЕНИЕ ДАННЫХ
+============================================================ */
+
+function loadFromLocalStorage() {
+
+    const stored =
+        localStorage.getItem(
+            "renovationBudgetData"
+        );
+
+
+    if (!stored) return;
+
+
+    try {
+
+        const data =
+            JSON.parse(stored);
+
+
+        estimateRows =
+            Array.isArray(data.rows)
+                ? data.rows
+                : [];
+
+
+        loadedFiles =
+            new Set(
+                Array.isArray(data.files)
+                    ? data.files
+                    : []
+            );
+
+
+        nextId =
+            data.nextId ||
+            (
+                estimateRows.length
+                    ? Math.max(
+                        ...estimateRows.map(
+                            row =>
+                                row.id || 0
+                        )
+                    ) + 1
+                    : 1
+            );
+
+    }
+
+    catch (error) {
+
+        console.warn(
+            "Не удалось восстановить данные.",
+            error
+        );
+
+    }
+
+}
+
+
+/* ============================================================
+   ЗАЩИТА ОТ HTML В ДАННЫХ
+============================================================ */
+
+function escapeHtml(value) {
+
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+}
+
+
+/* ============================================================
+   ПЕРВЫЙ ЗАПУСК
+============================================================ */
+
+loadFromLocalStorage();
+renderAll();
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор — Бюджет ремонта</title>
+    <meta name="description" content="Разбор смет ремонта, предоплаты и аналитика бюджета в браузере.">
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="css/app.css">
+    <link rel="stylesheet" href="css/site.css">
+</head>
+<body class="site page-app">
+
+<header class="site-header">
+    <div class="site-header-inner">
+        <a class="logo" href="index.html">
+            <span class="logo-mark">Б</span>
+            Бюджет ремонта
+        </a>
+        <button class="nav-toggle" id="navToggle" type="button" aria-label="Открыть меню">Меню</button>
+        <nav class="site-nav" id="siteNav">
+            <a href="index.html">Главная</a>
+            <a href="index.html#features">Возможности</a>
+            <a class="is-active" href="app.html">Калькулятор</a>
+            <a class="btn btn-primary" href="examples/sample-estimate.csv" download>Пример CSV</a>
+        </nav>
+    </div>
+</header>
+
+<div class="container">
+
+    <h1>Калькулятор смет</h1>
+    <p class="subtitle">
+        Загрузка PDF / Excel, предоплаты, сверка итогов и аналитика по категориям
+    </p>
+
+    <!-- ============================= -->
+    <!-- БЛОК ЗАГРУЗКИ СМЕТЫ -->
+    <!-- ============================= -->
+
+    <div class="card">
+
+        <h2>1. Загрузка сметы</h2>
+
+        <div class="form-grid">
+
+            <div>
+                <label>
+                    Вид работ <span class="required">*</span>
+                </label>
+
+                <input
+                    id="workType"
+                    type="text"
+                    placeholder="Например: Электрика, сантехника, плиточные работы"
+                >
+
+                <div class="help">
+                    Обязательное поле. Если в смете есть столбец
+                    «Вид работ» или «Раздел», приложение постарается использовать его.
+                </div>
+            </div>
+
+            <div>
+                <label>
+                    Категория расходов
+                </label>
+
+                <!-- Список категорий можно дополнить вручную в таблице -->
+                <select id="defaultCategory"></select>
+
+                <div class="help">
+                    Нужна для аналитики: работы, материалы, доставка и т.д.
+                    Если в Excel есть колонка «Категория расходов», она имеет приоритет.
+                </div>
+            </div>
+
+            <div>
+                <label>
+                    Дата сметы / операции
+                </label>
+
+                <input
+                    id="estimateDate"
+                    type="date"
+                >
+
+                <div class="help">
+                    Фактическая дата, когда смета была выставлена или работы выполнены.
+                    Если в файле есть колонка «Дата», она будет использована по строкам.
+                </div>
+            </div>
+
+            <div>
+                <label>
+                    Смета <span class="required">*</span>
+                </label>
+
+                <input
+                    id="fileInput"
+                    type="file"
+                    multiple
+                    disabled
+                    accept=".xlsx,.xls,.csv,.pdf"
+                >
+
+                <div class="help">
+                    Поддерживаются XLSX, XLS, CSV и текстовые PDF.
+                </div>
+            </div>
+
+        </div>
+
+        <div class="buttons">
+
+            <button
+                id="analyzeButton"
+                class="primary"
+                disabled
+            >
+                Анализировать смету
+            </button>
+
+            <button
+                id="demoButtonApp"
+                class="secondary"
+                type="button"
+            >
+                Загрузить демо-смету
+            </button>
+
+            <button
+                id="manualRowButton"
+                class="secondary"
+            >
+                + Добавить строку вручную
+            </button>
+
+            <button
+                id="exportButton"
+                class="success"
+            >
+                Скачать Excel
+            </button>
+
+            <button
+                id="clearButton"
+                class="danger"
+            >
+                Очистить всё
+            </button>
+
+        </div>
+
+        <div id="status" class="status"></div>
+
+    </div>
+
+
+    <!-- ============================= -->
+    <!-- БЛОК ПРЕДОПЛАТ -->
+    <!-- ============================= -->
+
+    <div class="card">
+
+        <h2>2. Предоплаты</h2>
+
+        <p class="help" style="margin-top:0;">
+            Фиксируйте авансы подрядчикам с фактической датой платежа.
+            Они не смешиваются со строками сметы, но входят в общий баланс.
+        </p>
+
+        <div class="form-grid-4">
+
+            <div>
+                <label>Дата предоплаты</label>
+                <input id="prepayDate" type="date">
+            </div>
+
+            <div>
+                <label>Сумма, ₽</label>
+                <input
+                    id="prepayAmount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Например: 50000"
+                >
+            </div>
+
+            <div>
+                <label>Кому / контрагент</label>
+                <input
+                    id="prepayCounterparty"
+                    type="text"
+                    placeholder="Бригада, магазин, ИП"
+                >
+            </div>
+
+            <div>
+                <label>Вид работ (необязательно)</label>
+                <input
+                    id="prepayWorkType"
+                    type="text"
+                    placeholder="Электрика"
+                >
+            </div>
+
+        </div>
+
+        <div style="margin-top:16px;">
+            <label>Комментарий</label>
+            <input
+                id="prepayComment"
+                type="text"
+                placeholder="Аванс по договору, первый этап..."
+            >
+        </div>
+
+        <div class="buttons">
+            <button id="addPrepayButton" class="primary">
+                + Добавить предоплату
+            </button>
+        </div>
+
+    </div>
+
+
+    <!-- ============================= -->
+    <!-- ДОПОЛНИТЕЛЬНАЯ ОБРАБОТКА PDF -->
+    <!-- ============================= -->
+
+    <div id="pdfPanel" class="card hidden">
+
+        <h2>Текст из PDF</h2>
+
+        <p>
+            Проверьте извлечённый текст. Если PDF имеет нестандартную структуру,
+            его можно вручную поправить перед разбором.
+        </p>
+
+        <textarea
+            id="pdfText"
+            placeholder="Здесь появится текст из PDF..."
+        ></textarea>
+
+        <div class="buttons">
+
+            <button
+                id="parsePdfButton"
+                class="primary"
+            >
+                Разобрать текст по строкам
+            </button>
+
+        </div>
+
+        <div class="warning">
+            ⚠️ Если PDF является сканом или фотографией, PDF.js не сможет
+            извлечь текст. Для таких документов в следующей версии понадобится OCR.
+        </div>
+
+    </div>
+
+
+    <!-- ============================= -->
+    <!-- СВОДНЫЕ ПОКАЗАТЕЛИ -->
+    <!-- ============================= -->
+
+    <div class="summary">
+
+        <div class="summary-card">
+            <div class="summary-title">Строк в сметах</div>
+            <div id="rowsCount" class="summary-value">0</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-title">Видов работ</div>
+            <div id="workTypesCount" class="summary-value">0</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-title">Смет загружено</div>
+            <div id="filesCount" class="summary-value">0</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-title">Расходы по сметам</div>
+            <div id="grandTotal" class="summary-value">0 ₽</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-title">Предоплаты</div>
+            <div id="prepayTotal" class="summary-value">0 ₽</div>
+            <div id="prepayCountHint" class="summary-hint"></div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-title">Остаток к оплате</div>
+            <div id="balanceTotal" class="summary-value">0 ₽</div>
+            <div class="progress-track">
+                <div id="paidProgress" class="progress-fill"></div>
+            </div>
+            <div id="paidHint" class="summary-hint"></div>
+        </div>
+
+    </div>
+
+
+    <div class="card">
+        <h2>3. Сверка суммы с документом</h2>
+        <div id="documentReconciliation" class="reconciliation-list">
+            Загрузите смету, чтобы сравнить итог документа с распознанными позициями.
+        </div>
+    </div>
+
+
+    <!-- ============================= -->
+    <!-- ВИЗУАЛИЗАЦИЯ АНАЛИТИКИ -->
+    <!-- ============================= -->
+
+    <div class="card">
+
+        <h2>4. Аналитика расходов и предоплат</h2>
+
+        <div class="charts-grid">
+
+            <div class="chart-box">
+                <div class="chart-title">Расходы по категориям</div>
+                <canvas id="chartCategory"></canvas>
+                <div id="chartCategoryEmpty" class="chart-empty hidden">
+                    Нет расходов для диаграммы.
+                </div>
+            </div>
+
+            <div class="chart-box">
+                <div class="chart-title">Расходы по видам работ</div>
+                <canvas id="chartWorkType"></canvas>
+                <div id="chartWorkTypeEmpty" class="chart-empty hidden">
+                    Нет данных по видам работ.
+                </div>
+            </div>
+
+            <div class="chart-box">
+                <div class="chart-title">Расходы и предоплаты по месяцам</div>
+                <canvas id="chartTimeline"></canvas>
+                <div id="chartTimelineEmpty" class="chart-empty hidden">
+                    Укажите даты операций, чтобы увидеть динамику.
+                </div>
+            </div>
+
+            <div class="chart-box">
+                <div class="chart-title">Сметы и предоплаты</div>
+                <canvas id="chartBalance"></canvas>
+                <div id="chartBalanceEmpty" class="chart-empty hidden">
+                    Добавьте смету или предоплату.
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ============================= -->
+    <!-- ИТОГИ ПО ВИДАМ РАБОТ -->
+    <!-- ============================= -->
+
+    <div class="card">
+
+        <h2>5. Итоги по видам работ</h2>
+
+        <div
+            id="groupSummary"
+            class="group-summary"
+        >
+            Пока данных нет.
+        </div>
+
+    </div>
+
+
+    <!-- ============================= -->
+    <!-- ИТОГИ ПО КАТЕГОРИЯМ -->
+    <!-- ============================= -->
+
+    <div class="card">
+
+        <h2>6. Итоги по категориям расходов</h2>
+
+        <div
+            id="categorySummary"
+            class="group-summary"
+        >
+            Пока данных нет.
+        </div>
+
+    </div>
+
+
+    <!-- ============================= -->
+    <!-- ТАБЛИЦА СМЕТЫ -->
+    <!-- ============================= -->
+
+    <div class="card">
+
+        <h2>7. Детализация сметы</h2>
+
+        <div class="filters">
+
+            <div>
+                <label>Фильтр по виду работ</label>
+                <select id="workFilter">
+                    <option value="">Все виды работ</option>
+                </select>
+            </div>
+
+            <div>
+                <label>Фильтр по категории</label>
+                <select id="categoryFilter">
+                    <option value="">Все категории</option>
+                </select>
+            </div>
+
+        </div>
+
+        <div class="table-wrapper">
+
+            <table>
+
+                <thead>
+                <tr>
+                    <th>Дата</th>
+                    <th>Категория</th>
+                    <th>Вид работ</th>
+                    <th>Наименование</th>
+                    <th>Количество</th>
+                    <th>Ед. изм.</th>
+                    <th>Цена за единицу</th>
+                    <th>Полная стоимость</th>
+                    <th>Источник</th>
+                    <th></th>
+                </tr>
+                </thead>
+
+                <tbody id="tableBody"></tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+
+    <!-- ============================= -->
+    <!-- ТАБЛИЦА ПРЕДОПЛАТ -->
+    <!-- ============================= -->
+
+    <div class="card">
+
+        <h2>8. Журнал предоплат</h2>
+
+        <div class="table-wrapper">
+
+            <table style="min-width:900px;">
+
+                <thead>
+                <tr>
+                    <th>Дата</th>
+                    <th>Сумма</th>
+                    <th>Кому / контрагент</th>
+                    <th>Вид работ</th>
+                    <th>Комментарий</th>
+                    <th></th>
+                </tr>
+                </thead>
+
+                <tbody id="prepayTableBody"></tbody>
+
+            </table>
+
+        </div>
+
+        <p id="prepayEmptyHint" class="help">
+            Предоплат пока нет.
+        </p>
+
+    </div>
+
+</div>
+
+<footer class="site-footer">
+    <div class="site-wrap site-footer-inner">
+        <span>Данные хранятся только в этом браузере</span>
+        <a href="index.html">На главную</a>
+    </div>
+</footer>
+
+<script src="js/demo-data.js"></script>
+<script src="js/app.js"></script>
+<script>
+document.getElementById("navToggle")?.addEventListener("click", () => {
+    document.getElementById("siteNav")?.classList.toggle("is-open");
+});
+
+document.getElementById("demoButtonApp")?.addEventListener("click", () => {
+    applyDemoBudget({ replace: false, redirect: "app.html" });
+});
+</script>
+</body>
+</html>
